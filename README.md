@@ -4,15 +4,11 @@ A real-time bus arrival tracking bot for CityBus of Greater Lafayette, Indiana.
 
 ## Features
 
-- **🔍 Fuzzy Stop Search**: Search for bus stops by name (e.g., `/search Walmart`)
-- **🚌 Route Selection**: Choose specific routes or track all routes at a stop  
-- **📍 Destination Display**: See where each bus is heading
-- **⏰ Flexible Updates**: Get notifications every 30s, 1, 2, 5, 10, or 15 minutes
-- **📊 Real-time Data**: Uses GTFS-Realtime feeds for accurate arrival predictions
-- **💬 Interactive UI**: Inline keyboards for easy navigation
-- **⌨️ Command Autocomplete**: Telegram suggests commands as you type
-- **🔔 Smart Responses**: Helpful messages for unknown commands
-- [x] **📡 Heartbeat Monitoring**: Optional periodic ping to a central dashboard
+- **Real-time Tracking**: Get live updates on bus locations and arrival times.
+- **Smart Search**: Find stops by name, number, or code (e.g., "Walmart", "205").
+- **Static Schedules**: Check planned arrival times for the rest of the day.
+- **Clean Interface**: Rolling message window keeps your chat history clutter-free.
+- **Heartbeat Monitoring**: Built-in health check for reliability.
 
 ## Quick Start
 

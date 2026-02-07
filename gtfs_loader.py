@@ -7,6 +7,7 @@ import csv
 import os
 from dataclasses import dataclass
 from typing import Optional
+from datetime import datetime
 from rapidfuzz import fuzz, process
 
 GTFS_DIR = os.path.join(os.path.dirname(__file__), "data")
@@ -36,13 +37,18 @@ class GTFSLoader:
         self.routes: dict[str, Route] = {}
         self.stop_routes: dict[str, set[str]] = {}  # stop_id -> set of route_ids
         self.route_stops: dict[str, set[str]] = {}  # route_id -> set of stop_ids
+        # Schedule data
+        self.calendar: dict[str, dict] = {}  # service_id -> {monday: 1, ...}
+        self.trips: dict[str, dict] = {}  # trip_id -> {route_id, service_id, headsign}
+        self.stop_times: dict[str, list[tuple]] = {}  # stop_id -> [(seconds, trip_id), ...]
         self._load_data()
 
     def _load_data(self):
         """Load all GTFS static data."""
         self._load_stops()
         self._load_routes()
-        self._load_stop_routes()
+        self._load_calendar()
+        self._load_trips_and_times()
 
     def _load_stops(self):
         """Load stops from stops.txt."""
@@ -73,43 +79,134 @@ class GTFSLoader:
                 )
                 self.routes[route.route_id] = route
 
-    def _load_stop_routes(self):
-        """Build stop-route relationships from trips.txt and stop_times.txt."""
-        # First, load trip_id -> route_id mapping
-        trip_routes: dict[str, str] = {}
+    def _load_calendar(self):
+        """Load service calendar."""
+        cal_file = os.path.join(self.gtfs_dir, "calendar.txt")
+        if not os.path.exists(cal_file):
+            return
+            
+        with open(cal_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                self.calendar[row["service_id"]] = {
+                    "monday": int(row["monday"]),
+                    "tuesday": int(row["tuesday"]),
+                    "wednesday": int(row["wednesday"]),
+                    "thursday": int(row["thursday"]),
+                    "friday": int(row["friday"]),
+                    "saturday": int(row["saturday"]),
+                    "sunday": int(row["sunday"]),
+                    "start_date": row["start_date"],
+                    "end_date": row["end_date"],
+                }
+
+    def _load_trips_and_times(self):
+        """Load trips and stop times."""
+        # Load trips
         trips_file = os.path.join(self.gtfs_dir, "trips.txt")
         with open(trips_file, "r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                trip_routes[row["trip_id"].strip()] = row["route_id"].strip()
-
-        # Then, build stop-route relationships from stop_times.txt
+                self.trips[row["trip_id"]] = {
+                    "route_id": row["route_id"],
+                    "service_id": row["service_id"],
+                    "headsign": row.get("trip_headsign", "")
+                }
+        
+        # Load stop times
         stop_times_file = os.path.join(self.gtfs_dir, "stop_times.txt")
         with open(stop_times_file, "r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                trip_id = row["trip_id"].strip()
-                stop_id = row["stop_id"].strip()
-                route_id = trip_routes.get(trip_id)
+                stop_id = row["stop_id"]
+                trip_id = row["trip_id"]
+                arrival_time = row["arrival_time"]
                 
-                if route_id:
+                # Convert HH:MM:SS to seconds past midnight
+                h, m, s = map(int, arrival_time.split(":"))
+                seconds = h * 3600 + m * 60 + s
+                
+                if stop_id not in self.stop_times:
+                    self.stop_times[stop_id] = []
+                self.stop_times[stop_id].append((seconds, trip_id))
+
+        # Sort all stop times by time
+        for stop_id in self.stop_times:
+            self.stop_times[stop_id].sort(key=lambda x: x[0])
+            
+            # Populate stop_routes and route_stops (legacy support)
+            for _, trip_id in self.stop_times[stop_id]:
+                trip = self.trips.get(trip_id)
+                if trip:
+                    route_id = trip["route_id"]
                     if stop_id not in self.stop_routes:
                         self.stop_routes[stop_id] = set()
                     self.stop_routes[stop_id].add(route_id)
-                    
                     if route_id not in self.route_stops:
                         self.route_stops[route_id] = set()
                     self.route_stops[route_id].add(stop_id)
+
+    def get_scheduled_arrivals(self, stop_id: str, day_of_week: str, current_seconds: int, duration_seconds: int = None) -> list[dict]:
+        """Get scheduled arrivals for a stop."""
+        if stop_id not in self.stop_times:
+            return []
+            
+        arrivals = []
+        # Handle day wrap-around (e.g. 25:00:00) by checking up to 48 hours?
+        # For simple bot, just check today's schedule from current time
+        
+        for seconds, trip_id in self.stop_times[stop_id]:
+            # Filter by time (today)
+            if seconds < current_seconds:
+                continue
+            if duration_seconds and seconds > (current_seconds + duration_seconds):
+                break
+                
+            trip = self.trips.get(trip_id)
+            if not trip:
+                continue
+                
+            # Check calendar
+            service_id = trip["service_id"]
+            service = self.calendar.get(service_id)
+            if not service or service.get(day_of_week) != 1:
+                continue
+            
+            # Check date range (if available)
+            if "start_date" in service and "end_date" in service:
+                today = datetime.now().strftime("%Y%m%d")
+                if not (service["start_date"] <= today <= service["end_date"]):
+                    continue
+                
+            # Add to results
+            arrivals.append({
+                "time_seconds": seconds,
+                "route_id": trip["route_id"],
+                "headsign": trip["headsign"]
+            })
+            
+        return arrivals
 
     def search_stops(self, query: str, limit: int = 5) -> list[Stop]:
         """Fuzzy search for stops by name."""
         if not query:
             return []
         
-        # Create a list of (stop_id, stop_name) for matching
-        stop_names = [(s.stop_id, s.stop_name) for s in self.stops.values()]
+        # 1. Exact/Partial match on stop_id or stop_code (case-insensitive)
+        query_lower = query.lower()
+        exact_matches = []
+        for stop in self.stops.values():
+            if (query_lower in stop.stop_id.lower() or 
+                query_lower in stop.stop_code.lower()):
+                exact_matches.append(stop)
         
-        # Use rapidfuzz to find matches
+        # If we have exact matches, return them (prioritize short matches)
+        if exact_matches:
+            exact_matches.sort(key=lambda s: len(s.stop_id))
+            return exact_matches[:limit]
+        
+        # 2. Fuzzy search on stop_name
+        stop_names = [(s.stop_id, s.stop_name) for s in self.stops.values()]
         results = process.extract(
             query,
             {s[0]: s[1] for s in stop_names},

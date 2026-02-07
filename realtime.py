@@ -99,10 +99,7 @@ def get_arrivals_for_stop(stop_id: str, route_id: Optional[str] = None) -> list[
             if minutes_until < 0 or minutes_until > 120:
                 continue
             
-            # Get trip headsign
-            trip_headsign = ""
-            if trip_update.trip.HasField("trip_headsign"):
-                trip_headsign = trip_update.trip.trip_headsign
+
             
             arrivals.append(Arrival(
                 route_id=trip_route_id,
@@ -111,7 +108,7 @@ def get_arrivals_for_stop(stop_id: str, route_id: Optional[str] = None) -> list[
                 arrival_time=datetime.fromtimestamp(arrival_timestamp),
                 delay_seconds=delay,
                 minutes_until=minutes_until,
-                trip_headsign=trip_headsign,
+                trip_headsign="",
             ))
     
     # Sort by minutes until arrival
@@ -127,12 +124,14 @@ def get_next_arrival(stop_id: str, route_id: str) -> Optional[Arrival]:
 
 def format_arrival_message(arrival: Arrival, route_name: str = "") -> str:
     """Format an arrival as a user-friendly message."""
+    time_str = f"{arrival.minutes_until} mins"
+    
+    # Add absolute time
+    abs_time = arrival.arrival_time.strftime("%I:%M%p").lstrip("0")
     if arrival.minutes_until == 0:
-        time_str = "arriving now"
-    elif arrival.minutes_until == 1:
-        time_str = "1 minute"
+        time_str = f"Now ({abs_time})"
     else:
-        time_str = f"{arrival.minutes_until} minutes"
+        time_str = f"{arrival.minutes_until}mins ({abs_time})"
     
     route_str = route_name or arrival.route_id
     
