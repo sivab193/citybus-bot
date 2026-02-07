@@ -1,0 +1,8 @@
+# CityBus Telegram Bot Requirements
+python-telegram-bot>=20.0
+gtfs-realtime-bindings
+rapidfuzz
+apscheduler
+requests
+
+python-dotenv

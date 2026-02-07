@@ -1,0 +1,20 @@
+route_id,agency_id,route_short_name,route_long_name,route_desc,route_type,route_color,route_text_color
+22,50051,22,Salisbury Street,22 Salisbury Street,3,1DE9B6,000000
+23,50051,23,Sagamore West,23 Sagamore West,3,00E5FF,000000
+42,50051,42,Happy Hollow Road,42 Happy Hollow Road,3,F50057,000000
+31,50051,31,North 9th Street,31 North 9th Street,3,FF6F61,000000
+43,50051,43,Northwestern Avenue,43 Northwestern Avenue,3,FF80AB,000000
+52E,50051,52E,Cumberland Express,"52E Cumberland Express Operates Monday - Friday during Purdue's Fall & Spring Semesters, on days when classes are held",3,6200EA,FFFFFF
+11,50051,11,Creasy Lane,11 Creasy Lane,3,FFEA00,000000
+35,50051,35,Park East Boulevard,35 Park East Boulevard,3,64FFDA,000000
+36,50051,36,South 18th Street,36 South 18th Street,3,FF9100,000000
+32,50051,32,Schuyler Avenue,32 Schuyler Avenue,3,00B8D4,000000
+41,50051,41,The Connector,41 The Connector,3,00E5FF,000000
+21,50051,21,McCormick Road,21 McCormick Road,3,AEEA00,000000
+12,50051,12,South Street,12 South Street,3,2979FF,000000
+33,50051,33,Ferry Street,33 Ferry Street,3,C6FF00,000000
+14,50051,14,Brady Lane,14 Brady Lane,3,651FFF,000000
+34,50051,34,Teal Road,34 Teal Road,3,FF4081,000000
+51E,50051,51E,Lark & Alight Express,"51E Lark & Alight Express, Operates Monday - Friday during Purdue's Fall & Spring Semesters, on days when classes are held",3,D500F9,000000
+53E,50051,53E,Lindberg Express,"53E Lindberg Express Operates Monday - Friday during Purdue's Fall & Spring Semesters, on days when classes are held",3,FFD600,000000
+13,50051,13,Main Street,13 Main Street,3,FF6F00,000000
